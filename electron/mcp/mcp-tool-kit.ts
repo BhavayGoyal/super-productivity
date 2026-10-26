@@ -3,6 +3,31 @@ import { AssistantAccessScope } from '../shared-with-frontend/assistant-access.m
 import { McpToolDefinition, McpToolResult } from './mcp-protocol';
 
 /**
+ * A tool's title and behaviour hints. Every tool here touches only the user's
+ * own data, so none is open-world. A write is destructive when it can
+ * overwrite something; one that only adds (a task, tracked time) is not.
+ */
+export const describeTool = (
+  title: string,
+  hints: { readOnly: boolean; destructive: boolean; idempotent: boolean },
+): Pick<McpToolDefinition, 'title' | 'annotations'> => ({
+  title,
+  annotations: {
+    title,
+    readOnlyHint: hints.readOnly,
+    destructiveHint: hints.destructive,
+    idempotentHint: hints.idempotent,
+    openWorldHint: false,
+  },
+});
+
+export const READ_ONLY_HINTS = {
+  readOnly: true,
+  destructive: false,
+  idempotent: true,
+} as const;
+
+/**
  * What every assistant tool is built from: the renderer bridge, results,
  * argument validation, field projections and size caps. The tools themselves
  * live in mcp-tools.ts.
