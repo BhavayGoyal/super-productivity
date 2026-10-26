@@ -524,7 +524,14 @@ export const createServer = (
           publicUrl: fullConfig.publicUrl,
           signingKey: getJwtSecret(),
           clients: fullConfig.captureOAuthClients,
+          review: fullConfig.captureReview,
         });
+        if (fullConfig.captureReview) {
+          Logger.warn(
+            'CAPTURE_REVIEW_* is set: a reusable reviewer code can connect assistants ' +
+              'to one demo account. Unset it once directory review is done.',
+          );
+        }
         await fastifyServer.register(captureRoutes, { prefix: '/api/capture' });
       }
 
