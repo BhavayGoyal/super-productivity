@@ -323,7 +323,8 @@ describe('legal pages', () => {
       createServer({ dataDir: makeDataDir() });
       const withCapture = fs.readFileSync(PRIVACY_OUTPUT, 'utf-8');
       expect(withCapture).toContain('AI Assistant Connections');
-      expect(withCapture).toContain('45 days');
+      expect(withCapture).toContain('<strong>45 days</strong>');
+      expect(withCapture).not.toContain('{{');
       expect(withCapture).not.toContain('OPTIONAL:');
     });
 

@@ -27,6 +27,7 @@ import {
   getSyncService,
 } from './sync';
 import { wsRoutes } from './sync/websocket.routes';
+import { RETENTION_DAYS } from './sync/sync.types';
 import {
   getWsConnectionService,
   resetWsConnectionService,
@@ -262,6 +263,10 @@ const generatePrivacyHtml = (
         : {}),
       ...(privacy.supervisoryAuthority
         ? { PRIVACY_SUPERVISORY_AUTHORITY: privacy.supervisoryAuthority }
+        : {}),
+      // Unclaimed captures are removed by the same retention as stored ops.
+      ...(options.isCaptureEnabled
+        ? { CAPTURE_RETENTION_DAYS: String(RETENTION_DAYS) }
         : {}),
     },
   );

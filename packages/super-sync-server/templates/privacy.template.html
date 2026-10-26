@@ -228,11 +228,15 @@
         </li>
         <li>
           An encrypted task is deleted once one of your devices has imported it, and no
-          later than <strong>45 days</strong> after it arrived.
+          later than <strong>{{ CAPTURE_RETENTION_DAYS }} days</strong> after it arrived.
         </li>
         <li>
           For each connection we store the assistant's name, when it was created, last
           used and expires, and hashes of its access tokens, never the tokens themselves.
+        </li>
+        <li>
+          We may count connections and their recent use per assistant, in aggregate and
+          without any task content, to decide how to develop this feature.
         </li>
         <li>
           A connected assistant can only add tasks. It cannot read your data through the
