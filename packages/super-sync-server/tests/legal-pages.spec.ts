@@ -311,6 +311,22 @@ describe('legal pages', () => {
       expect(privacy).toMatch(/Art\. 28\s+GDPR requires a Data Processing Agreement/);
     });
 
+    it('describes AI assistant connections only when the connector is enabled', async () => {
+      setFullPrivacyEnv();
+      const { createServer } = await importServer();
+      createServer({ dataDir: makeDataDir() });
+      const withoutCapture = fs.readFileSync(PRIVACY_OUTPUT, 'utf-8');
+      expect(withoutCapture).not.toContain('AI Assistant Connections');
+      expect(withoutCapture).not.toContain('OPTIONAL:');
+
+      process.env.CAPTURE_CONNECTOR_ENABLED = 'true';
+      createServer({ dataDir: makeDataDir() });
+      const withCapture = fs.readFileSync(PRIVACY_OUTPUT, 'utf-8');
+      expect(withCapture).toContain('AI Assistant Connections');
+      expect(withCapture).toContain('45 days');
+      expect(withCapture).not.toContain('OPTIONAL:');
+    });
+
     it('does not link Terms when the operator supplied none', async () => {
       setFullPrivacyEnv();
       const { createServer } = await importServer();

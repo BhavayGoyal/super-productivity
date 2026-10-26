@@ -208,6 +208,54 @@
         </li>
         <li>Loss of the key results in permanent data loss.</li>
       </ul>
+      <!-- OPTIONAL:CAPTURE -->
+
+      <h3>C) AI Assistant Connections (optional)</h3>
+      <p>
+        If you let AI assistants add tasks in the app (Settings → Sync → SuperSync → AI
+        assistants) and connect an assistant, for example Claude or ChatGPT, that
+        assistant's provider can send new tasks to the Service on your behalf:
+      </p>
+      <ul>
+        <li>
+          The provider sends a task's title, notes and, if given, its date, time and
+          repetition. We process them in memory only to encrypt them to a key that your
+          devices hold, and store them only in that encrypted form.
+        </li>
+        <li>
+          Tasks your own devices queue this way (for example from the Android share sheet)
+          are encrypted on the device before they are sent.
+        </li>
+        <li>
+          An encrypted task is deleted once one of your devices has imported it, and no
+          later than <strong>45 days</strong> after it arrived.
+        </li>
+        <li>
+          For each connection we store the assistant's name, when it was created, last
+          used and expires, and hashes of its access tokens, never the tokens themselves.
+        </li>
+        <li>
+          A connected assistant can only add tasks. It cannot read your data through the
+          Service.
+        </li>
+        <li>
+          You can remove a connection, or switch the feature off, in the app at any time.
+          Switching it off removes every connection and deletes all waiting tasks.
+        </li>
+        <li>
+          The key that opens these tasks is part of your synchronized settings. Without
+          End-to-End Encryption it is therefore stored as described in A) above.
+        </li>
+        <li>
+          What you tell an assistant, and what it sends, is processed by its provider
+          under the provider's own privacy policy, on which we have no influence.
+        </li>
+      </ul>
+      <p>
+        The legal basis is the performance of the contract (Art. 6(1)(b) GDPR): you
+        request this feature by switching it on and connecting an assistant.
+      </p>
+      <!-- /OPTIONAL:CAPTURE -->
 
       <h2>7. Email Sending</h2>
       <p>
