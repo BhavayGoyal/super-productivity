@@ -316,13 +316,22 @@ describe('legal pages', () => {
       const { createServer } = await importServer();
       createServer({ dataDir: makeDataDir() });
       const withoutCapture = fs.readFileSync(PRIVACY_OUTPUT, 'utf-8');
-      expect(withoutCapture).not.toContain('AI Assistant Connections');
+      for (const capturePart of [
+        'AI Assistant Connections',
+        'AI Assistant Connection Data',
+        'Receiving tasks from AI assistants',
+        'aggregate counting of AI assistant connections',
+      ]) {
+        expect(withoutCapture).not.toContain(capturePart);
+      }
       expect(withoutCapture).not.toContain('OPTIONAL:');
 
       process.env.CAPTURE_CONNECTOR_ENABLED = 'true';
       createServer({ dataDir: makeDataDir() });
       const withCapture = fs.readFileSync(PRIVACY_OUTPUT, 'utf-8');
       expect(withCapture).toContain('AI Assistant Connections');
+      expect(withCapture).toContain('AI Assistant Connection Data');
+      expect(withCapture).toContain('Receiving tasks from AI assistants');
       expect(withCapture).toContain('<strong>45 days</strong>');
       expect(withCapture).not.toContain('{{');
       expect(withCapture).not.toContain('OPTIONAL:');

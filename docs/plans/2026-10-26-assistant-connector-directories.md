@@ -297,15 +297,33 @@ submission form.
   - A `workflow_dispatch` workflow publishes it with GitHub Actions OIDC. It
     uses `mcp-publisher` v1.8.1, pinned by SHA-256.
   - Docker's catalog, Smithery and Glama follow by hand.
-- **Privacy policy.** An optional section in the SuperSync privacy template,
-  rendered only when `CAPTURE_CONNECTOR_ENABLED` is on, covers:
-  - what the assistant sends, and what the server sees only in memory
-  - sealed storage, and deletion after import or after `RETENTION_DAYS`
-    (rendered from the constant)
-  - the grant metadata kept, and aggregate counting of connections per
-    assistant to decide on the feature's development
-  - revocation, and that the assistant's provider processes data under its own
-    terms
+- **Privacy policy.** Section 6 C of the SuperSync privacy template, plus
+  pointers in sections 3, 4 and 8. All of it is rendered only when
+  `CAPTURE_CONNECTOR_ENABLED` is on. A second fresh-context review checked
+  every statement against the code (Oct 27), and the section now covers:
+  - what the assistant sends, and what the server sees only in memory (the
+    retry window keeps a keyed fingerprint, not the text)
+  - what is stored with each waiting task, per connection, for codes and
+    pending sign-ins, and the public key's switched-off marker
+  - when each of these is deleted, rendered from `RETENTION_DAYS`
+  - IP counts for rate limits, held in memory only. The daily cleanup now
+    prunes expired counters, so the policy can bound them.
+  - removal, sign-out and switch-off
+  - that synced settings, which hold the private key, are accepted only end-to-end
+    encrypted (the server's E2EE gate, #9457)
+  - aggregate counting per kind of assistant
+  - its legal bases
+
+  **Open for a lawyer:**
+  - Art. 6(1)(f) for the abuse limits and the aggregate counting.
+  - Whether the assistant's provider is a recipient or an independent
+    controller, and any third-country disclosure for the credentials sent back
+    to it.
+  - Whether to keep IP counts in memory without a further bound.
+
+  **Not changed:** sections 3(2) and 6 A/B still describe E2EE as optional,
+  although the server has refused unencrypted uploads since #9457. That is a
+  policy-wide correction for its own change.
 
   **Legal review before deploy:** the hosted instance serves it on its next
   deploy.

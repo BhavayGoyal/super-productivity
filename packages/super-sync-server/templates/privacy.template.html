@@ -137,6 +137,14 @@
         <li>Operating system</li>
         <li>Error and diagnostic information</li>
       </ul>
+      <!-- OPTIONAL:CAPTURE -->
+
+      <h3>(4) AI Assistant Connection Data</h3>
+      <p>
+        Only if you use AI assistant connections: connection records, the public part of
+        your capture key and encrypted waiting tasks (Section 6 C).
+      </p>
+      <!-- /OPTIONAL:CAPTURE -->
 
       <h2>4. Legal Basis for Processing</h2>
       <p>We process your data based on the following legal bases:</p>
@@ -147,6 +155,9 @@
         <li>Synchronization of your content</li>
         <li>Technical provision of the Service</li>
         <li>Sending security-relevant system emails (e.g., password reset)</li>
+        <!-- OPTIONAL:CAPTURE -->
+        <li>Receiving tasks from AI assistants you connect (Section 6 C)</li>
+        <!-- /OPTIONAL:CAPTURE -->
       </ul>
 
       <h3>(2) Legitimate Interest (Art. 6(1)(f) GDPR)</h3>
@@ -154,6 +165,11 @@
         <li>Server and service security</li>
         <li>Detection and defense against misuse (DDoS, brute force attacks)</li>
         <li>Error analysis and stability improvement</li>
+        <!-- OPTIONAL:CAPTURE -->
+        <li>
+          Abuse limits and aggregate counting of AI assistant connections (Section 6 C)
+        </li>
+        <!-- /OPTIONAL:CAPTURE -->
       </ul>
 
       <h3>(3) Legal Obligations (Art. 6(1)(c) GDPR)</h3>
@@ -212,52 +228,80 @@
 
       <h3>C) AI Assistant Connections (optional)</h3>
       <p>
-        If you let AI assistants add tasks in the app (Settings → Sync → SuperSync → AI
-        assistants) and connect an assistant, for example Claude or ChatGPT, that
+        If you let AI assistants add tasks (Settings → Sync → SuperSync → AI assistants)
+        and connect one, for example Claude, ChatGPT or a script using a manual token, the
         assistant's provider can send new tasks to the Service on your behalf:
       </p>
       <ul>
         <li>
-          The provider sends a task's title, notes and, if given, its date, time and
-          repetition. We process them in memory only to encrypt them to a key that your
-          devices hold, and store them only in that encrypted form.
+          It sends a task's title, notes and, if given, its date, time and repetition. We
+          process this text only in memory, to encrypt it to your devices' capture key,
+          store it only encrypted and never write it to logs. To recognise automatic
+          retries, we keep a keyed fingerprint of it (not the text) in memory for 10
+          minutes.
         </li>
         <li>
-          Tasks your own devices queue this way (for example from the Android share sheet)
-          are encrypted on the device before they are sent.
+          Tasks your own devices send this way (for example from the Android share sheet)
+          are encrypted on the device; we never see their content.
         </li>
         <li>
-          An encrypted task is deleted once one of your devices has imported it, and no
-          later than <strong>{{ CAPTURE_RETENTION_DAYS }} days</strong> after it arrived.
+          With each encrypted task we store when it arrived, which connection sent it and
+          which of your devices picked it up. It is deleted once a device has imported it,
+          otherwise at the first daily clean-up after
+          <strong>{{ CAPTURE_RETENTION_DAYS }} days</strong>.
         </li>
         <li>
-          For each connection we store the assistant's name, when it was created, last
-          used and expires, and hashes of its access tokens, never the tokens themselves.
+          For each connection we store whether it uses a manual token or a sign-in, the
+          assistant's name (for a manual token, the name you enter), the assistant's
+          sign-in identifier, when the connection was created, last used (to the hour),
+          renewed, expires or was removed, and hashes of its credentials, never the
+          credentials themselves. Connection codes and pending sign-ins (the assistant's
+          identifier, its return address and the values that secure the sign-in) expire
+          after 10 minutes; they are deleted once used, otherwise at the next daily
+          clean-up. We also store the public part of your capture key.
         </li>
         <li>
-          We may count connections and their recent use per assistant, in aggregate and
-          without any task content, to decide how to develop this feature.
+          To limit abuse, we count connection and sign-in attempts per IP address (an IPv6
+          network counts as one), in memory only, never in the database. These counts are
+          discarded at the first daily clean-up after their counting period, at most one
+          hour, has ended.
         </li>
         <li>
-          A connected assistant can only add tasks. It cannot read your data through the
-          Service.
+          A connected assistant can only add tasks and cannot read your data through the
+          Service. We send the assistant's provider only access credentials and a short
+          confirmation or error message per request.
         </li>
         <li>
-          You can remove a connection, or switch the feature off, in the app at any time.
-          Switching it off removes every connection and deletes all waiting tasks.
+          You can remove a connection at any time; tasks it already sent stay until
+          imported or expired unless you choose to delete them too. Signing out on all
+          devices also removes every connection and keeps waiting tasks. Switching the
+          feature off removes every connection and deletes all waiting tasks. Records of
+          removed or expired connections are deleted at the next daily clean-up. We keep
+          only your public capture key, marked as switched off, so that an outdated device
+          cannot switch the feature back on; it is deleted with your account.
         </li>
         <li>
-          The key that opens these tasks is part of your synchronized settings. Without
-          End-to-End Encryption it is therefore stored as described in A) above.
+          The private key that opens these tasks is part of your synchronized settings,
+          which the Service accepts only end-to-end encrypted. We cannot use it to open
+          your tasks.
         </li>
         <li>
-          What you tell an assistant, and what it sends, is processed by its provider
-          under the provider's own privacy policy, on which we have no influence.
+          What you tell an assistant, and what it sends, is processed by the assistant's
+          provider under that provider's own privacy policy, on which we have no
+          influence.
+        </li>
+        <li>
+          We may count connections per kind of assistant (manual tokens without their
+          names) and their recent use, in aggregate and without task content, to plan the
+          operation and development of this feature.
         </li>
       </ul>
       <p>
-        The legal basis is the performance of the contract (Art. 6(1)(b) GDPR): you
-        request this feature by switching it on and connecting an assistant.
+        The legal basis for the feature is the performance of the contract (Art. 6(1)(b)
+        GDPR): you request it by switching it on and connecting an assistant. The abuse
+        limits and the aggregate counting are based on our legitimate interests in a
+        secure Service and in developing it (Art. 6(1)(f) GDPR); you may object to them
+        (Section 10).
       </p>
       <!-- /OPTIONAL:CAPTURE -->
 
@@ -302,6 +346,17 @@
         for as long as statutory retention obligations require (in Germany, up to
         <strong>10 years</strong>). If no paid plan is offered, no such data arises.
       </p>
+      <!-- OPTIONAL:CAPTURE -->
+
+      <h3>(5) AI Assistant Connections</h3>
+      <p>
+        Waiting tasks are deleted on import, otherwise at the first daily clean-up after
+        <strong>{{ CAPTURE_RETENTION_DAYS }} days</strong>. Connection records are kept
+        while the connection is active (a manual token for up to one year, an assistant
+        sign-in until 90 days without renewal) and deleted at the next daily clean-up
+        after removal or expiry. Details are in Section 6 C.
+      </p>
+      <!-- /OPTIONAL:CAPTURE -->
 
       <h2>9. Transfer to Third Parties</h2>
       <p>Data is generally not transferred to third parties unless:</p>

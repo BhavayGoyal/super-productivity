@@ -97,7 +97,7 @@ ${local ? '<p class="consent-note">This assistant runs on your computer. Continu
 </form>
 <details class="consent-privacy">
 <summary>Privacy and access</summary>
-<p>Waiting tasks are stored encrypted. Enable sync encryption to keep the capture key private.</p>
+<p>Waiting tasks are stored encrypted to a key only your devices hold.</p>
 <p>You can remove this connection at any time in Super Productivity’s AI assistants settings.</p>
 </details>
 </section>
