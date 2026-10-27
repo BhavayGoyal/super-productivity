@@ -1,6 +1,8 @@
 # Assistant connector: from capture to planning
 
-Oct 26, 2026 · rev. 1 · status: proposal
+Oct 26, 2026 · rev. 2 · status: M1, M2 and M2b implemented on
+`ccr-b970e295-wfh8kn`, not yet merged; M3–M5 deferred or gated. Rev. 2 follows
+a fresh-context adversarial review; § Review lists what it changed.
 
 Make Super Productivity (SP) a strong answer to "connect a task manager to my AI
 assistant", for people who care about privacy and time tracking. We control
@@ -17,18 +19,19 @@ It builds on, and in places revises, two plans that already shipped in v19.3.0
 §5 lists every earlier decision this plan touches and whether it keeps or
 reverses it.
 
-**Decision (proposed).**
+**Decision.**
 
-1. Make both endpoints directory-ready. That means tool annotations, server
-   metadata, a privacy-policy section, a published `.mcpb` and MCP Registry
-   entries (M1, M2).
-2. Give the local endpoint the tools daily planning needs: complete, schedule,
-   update, track and log time, and a time summary. They sit behind a new
-   permission that is off by default, and there is still no delete (M3, M4).
-3. Remote reading and editing for cloud assistants (claude.ai, ChatGPT) is
-   designed here as a relay to the user's own running app (M5). It stays
-   gated on evidence and is not built in this round.
-4. A server-side headless client is rejected for this purpose.
+1. **Now:** make both endpoints directory-ready and submittable:
+   - tool annotations and server metadata (M1)
+   - a privacy-policy section, the `.mcpb` as a release asset, an in-app link
+     to it, and a hosted MCP Registry entry (M2)
+   - a durable sign-in path for directory reviewers (M2b)
+2. **Deferred:** local editing tools (M3) and a time summary (M4). They need a
+   local demand signal first (§1). §6.3 and §6.4 record what the review found
+   they must get right when they come back.
+3. **Gated:** remote reading and editing for cloud assistants, as a relay to
+   the user's own running app (M5).
+4. **Rejected:** a server-side headless client.
 
 ---
 
@@ -36,12 +39,16 @@ reverses it.
 
 - **Reach.** SP is listed in Claude's connector directory (Community label), in
   the official MCP Registry, and is submitted to ChatGPT's plugin directory.
-- **Quality.** A fixed set of planning scenarios (§6.7) works end to end against
-  Claude Code, Codex and Claude Desktop on the local endpoint, and against
-  claude.ai and ChatGPT on the hosted one, for whatever tools it has.
-- **Uptake, without telemetry.** The server already stores capture grants with
-  a client name. Counting them per client is the only signal; nothing new is
-  collected. This count decides the M5 gate.
+- **Quality.** The scenarios in §6.7 that the shipped tools cover work end to
+  end: the local endpoint against Claude Code, Codex and Claude Desktop, the
+  hosted one against claude.ai and ChatGPT.
+- **Uptake signal for M5, without telemetry.** A count of capture grants per
+  client name, and how many were used in the last 30 days (`lastUsedAt`). It is
+  aggregate only, and the privacy section discloses it (§6.2).
+- **Demand signal for M3 and M4.** The hosted count cannot show demand for local
+  tools, so these need their own signal: issues, discussions or release-note
+  replies asking for assistant editing or time questions. Each must come from a
+  distinct participant, as the review guide counts demand.
 
 ## 2. Where we are (v19.3.0)
 
@@ -51,21 +58,24 @@ reverses it.
 | Local `/mcp` on the desktop app (`electron/mcp/`), at `127.0.0.1:3876` | Clients on the same computer: Claude Code, Codex, Cursor, and Claude Desktop through `.mcpb` | `get_status`, `list_tasks`, `get_task`, `list_projects`, `list_tags`, `create_task`  | `sp_mcp_` key and three scopes                                             | None             |
 | Local REST API (`electron/local-rest-api.ts`)                          | Scripts, Parallel Code                                                                       | Full task CRUD, start/stop tracking, time logging                                    | REST token, all or nothing                                                 | None             |
 
-Known gaps in what shipped:
+Gaps in what shipped, and their status on this branch:
 
-- **No annotations on the local tools.** The hosted `create_task` has
-  `readOnlyHint` and `destructiveHint` but no `title`
-  (`create-task.tool.ts:94`).
-- **The `.mcpb` is not published anywhere.** Its manifest has no icon, and
-  `pack.js` needs the root `node_modules` (`fflate`).
-- **The SuperSync privacy policy** (`templates/privacy.template.html`) does not
-  mention AI assistants. This was M4 of the capture plan, still open.
+- **Annotations.** The local tools had none. The hosted `create_task` had no
+  `title`, `idempotentHint` or `openWorldHint`. Fixed in M1.
+- **The `.mcpb` is not published anywhere,** and its manifest has no icon. Fixed
+  in M2.
+- **The SuperSync privacy policy** (`templates/privacy.template.html`) did not
+  mention AI assistants. This was M4 of the capture plan, still open. Written
+  in M2; it needs legal review before deploy.
 - **The hosted instance may be behind.** It answered a claude.ai session on
   Oct 26 with a `create_task` that had only `title` and `notes`, while v19.3.0
   ships `dueDate`, `dueTime` and `repeat`. Either the instance is older than
-  #10829, or Claude cached the tool list.
+  #10829, or Claude cached the tool list. Operator check.
 - **No MAS entitlement.** Mac App Store builds cannot listen on the port; the
-  entitlement was deferred to its own release (09-22 plan, §3).
+  entitlement was deferred to its own release (09-22 plan, §3). Unchanged.
+- **Reviewers cannot sign in.** OAuth needs a 10-minute, single-use connect code
+  from a running app. Claude's "test credentials" and ChatGPT's "test account
+  without MFA" cannot work with that. Fixed in M2b.
 
 Parallel Code (johannesjo/parallel-code, MIT, ~1.1k★) already closes the
 execute-and-track loop locally through the REST API:
@@ -74,14 +84,16 @@ execute-and-track loop locally through the REST API:
 - It sets SP's current task, so SP tracks the time.
 - It keeps titles in sync and marks the task done on merge.
 
-The plan step, where an assistant plans the day in SP, is what is missing.
+The plan step, where an assistant plans the day in SP, needs read access plus
+edits. Locally that means M3; for cloud assistants it means M5.
 
 ## 3. Facts checked on Oct 26, 2026
 
 The confidence labels follow `docs/market/README.md`: **read** means the
 primary page was read; **snippet** means only a search excerpt was available.
 OpenAI's and modelcontextprotocol.io's hosts were blocked from the research
-sandbox. The registry docs were read from their GitHub source instead.
+sandbox. The registry docs and schema were read from GitHub and
+static.modelcontextprotocol.io instead.
 
 **Claude connector directory (read)**
 
@@ -138,17 +150,19 @@ sandbox. The registry docs were read from their GitHub source instead.
 - **Plans (unverified).** Custom write connectors may be limited to Business,
   Enterprise and Edu. If so, a listing is the only route for consumer users.
 
-**Official MCP Registry (read, GitHub `modelcontextprotocol/registry` docs)**
+**Official MCP Registry (read)**
 
 - **Status.** Preview; API frozen at v0.1. Published with the `mcp-publisher`
   CLI. Versions are immutable, and an entry is at most 4 KB.
-- **Namespaces.** `io.github.<org>/*` through GitHub OAuth or GitHub Actions
-  OIDC; an org namespace needs an org owner. A domain namespace is verified by
-  a DNS TXT record or by `/.well-known/mcp-registry-auth`.
-- **Remote servers.** A `remotes` entry with `streamable-http`. A URL belongs
-  to one name.
+- **Namespaces.** `io.github.<org>/*` through GitHub Actions OIDC (the workflow
+  needs `id-token: write`), or a domain namespace verified by a DNS TXT record
+  or `/.well-known/mcp-registry-auth`.
+- **Remote servers.** A `remotes` entry (`streamable-http`) may declare required
+  secret headers with a `{variable}` value. A URL belongs to one name.
 - **`.mcpb` packages.** They must be hosted on GitHub or GitLab releases, the
   URL must contain "mcp", and `fileSha256` is required.
+- **`mcp-publisher` v1.8.1.** The `linux_amd64` archive's SHA-256 is
+  `a06c9096…cf2cc`, matching the release's `registry_1.8.1_checksums.txt`.
 - **Downstream (snippet).** GitHub's MCP registry (VS Code `@mcp`) and Glama
   build on it. Docker's catalog takes a PR. Smithery lists servers by URL.
   PulseMCP has paused submissions.
@@ -164,8 +178,9 @@ sandbox. The registry docs were read from their GitHub source instead.
   (snippet).
 - **No official server:** Toggl, Clockify, Motion, Microsoft To Do, Things.
 
-**So the shelf is not empty for todo apps.** It is empty for time trackers,
-and for anything open-source, local-first or account-free.
+**So the shelf is not empty for todo apps.** No dedicated time tracker is
+listed; ClickUp is the only listing with time tools. Nothing listed is
+open-source, local-first or account-free.
 
 ## 4. Prior art
 
@@ -183,43 +198,42 @@ pages and community lists (snippet, 2026-09/10). Nothing was tested hands-on.
 **Take:**
 
 - Separate tools per action.
-- Time tracking as tools (ClickUp is the only listed precedent).
-- "What did I work on" as a first-class read (no listed competitor answers it
-  from tracked time).
+- Time tracking as tools, when M3 and M4 return.
+- Privacy and "your data stays on your devices" as the pitch.
 
 **Deliberately don't:**
 
 - **A 90-tool surface.** Every tool is permanent public contract and prompt
-  surface; about 12 well-described tools cover the scenarios in §6.7.
-- **Delete, archive and bulk tools.** The blast radius of a steered assistant
-  outgrows the benefit; the user deletes in the app.
-- **Project and tag creation.** That is organization churn, not planning.
+  surface.
+- **Delete, archive and bulk tools.**
+- **Project and tag creation.**
 - **Any vendor-cloud copy of the user's data.**
 
 Scorecard rows: dimension 1 (quick capture, must not lose badly), 7 (time
 tracking, must be best), 15 (extensibility, tracked), 19 (privacy, must be
-best) and 21 (AI, open decision). This plan serves the must-be-best rows 7
-and 19. It does not try to close the AI row by building an assistant.
+best) and 21 (AI, open decision). This round improves rows 1, 15 and 19
+(capture reach, distribution, privacy disclosure); row 7 waits for M4. It does
+not try to close the AI row by building an assistant.
 
 ## 5. What earlier plans decided, and what changes
 
-| #   | Earlier decision (source)                                                                                                    | This plan                                                                                                                                                                                                   | Why                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| --- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | "Editing is out of scope until usage shows a need" (09-22, Decision)                                                         | **Partly reversed** for the local endpoint: a new `tasks:edit` scope covers complete, schedule, update, start/stop tracking and log time. It is off by default. There is no delete, archive or re-parenting | For: two community MCP servers already ship full CRUD on SP (the larger has 19 tools including time tracking, `community-plugins.json`); Parallel Code edits through REST; every listed competitor reads and writes; Verified review tests usefulness. Against: no SP issue asks for MCP editing (searched 2026-10-26), and v19.3.0 uptake is three days old. The scope stays off by default, so a user who never opts in sees nothing new |
-| 2   | Reads forward to the existing REST routes; capture uses its own internal route (09-22, §5)                                   | Edits use **internal `/assistant/*` routes** like capture, not REST `PATCH`                                                                                                                                 | REST `PATCH` sets `dueDay` through a generic `updateTask`. The app schedules with `planTasksForToday`, `PlannerActions.planTaskForDay`, `scheduleTaskWithTime` and `unscheduleTask` (`task-context-menu-inner.component.ts:800–850`). An assistant should do exactly what the menu does, as capture does with the add-task bar                                                                                                             |
-| 3   | "Only active tasks … the archive is never exposed" (09-22, §Tools; wiki 3.01)                                                | **Kept.** The time summary (M4) gives totals per day and project for all tracked time, but titles only for active tasks                                                                                     | It answers "how did I spend this week?" without breaking the published promise; titles of archived tasks would need their own scope and a wiki change                                                                                                                                                                                                                                                                                      |
-| 4   | No `instructions` in `initialize` (09-22, §Protocol)                                                                         | **Kept**                                                                                                                                                                                                    | Tool descriptions carry the domain rules (Inbox, Today = due today); one less public string to maintain                                                                                                                                                                                                                                                                                                                                    |
-| 5   | `.mcpb` release asset and in-app download are follow-ups (09-22, §.mcpb, §8)                                                 | **Done now** (M2)                                                                                                                                                                                           | Claude Desktop users have no other route; the MCP Registry needs a GitHub release URL and a SHA-256                                                                                                                                                                                                                                                                                                                                        |
-| 6   | MAS `network.server` entitlement in its own release, after a dev-build check (09-22, §3, §8)                                 | **Unchanged**                                                                                                                                                                                               | Still the condition for Mac App Store users. It stays a maintainer step and is not in this branch                                                                                                                                                                                                                                                                                                                                          |
-| 7   | Hosted path only for capture (10-11, Decision 1)                                                                             | **Kept**                                                                                                                                                                                                    | —                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| 8   | "Out of scope: reading tasks remotely, editing …, server-created ops" (10-11)                                                | **Kept for this round.** M5 designs remote read/edit as a relay that runs on the user's device and is **gated**. The server still never creates ops and never stores task content                           | The relay is the only remote design that keeps the pitch true ("your data stays on your devices"); its cost (§6.5) needs uptake evidence first                                                                                                                                                                                                                                                                                             |
-| 9   | The headless client "stays deferred" as the path to remote read (10-11, Decision)                                            | **Rejected** for directory use                                                                                                                                                                              | It needs the user's key and full plaintext state on the server, plus reducer extraction (~240 files); that would turn "private by design" into "trust our server"                                                                                                                                                                                                                                                                          |
-| 10  | `create_task` annotations `readOnlyHint: false, destructiveHint: false` (10-11, §Tool contract)                              | Add `title`, `idempotentHint: false` and `openWorldHint: false`                                                                                                                                             | Claude needs `title`; ChatGPT needs all three hints explicitly                                                                                                                                                                                                                                                                                                                                                                             |
-| 11  | M4: wiki per client, privacy-policy addition, release notes, enable on the hosted server (10-11, Milestones)                 | The privacy-policy section is written here; redeploying and enabling stay operator steps                                                                                                                    | Both directories need a privacy-policy URL that covers this                                                                                                                                                                                                                                                                                                                                                                                |
-| 12  | Connect code and client allowlist instead of server sign-in (10-11, Decision 5)                                              | **Kept**, plus a reviewer runbook (§6.6)                                                                                                                                                                    | Server sign-in would need a login-then-continue flow the server lacks. The runbook gives reviewers a demo account and a running app that shows the code. Risk: ChatGPT asks for "a test account without MFA"                                                                                                                                                                                                                               |
-| 13  | "No shared package until a second user exists" (10-11, §/mcp)                                                                | **Kept.** The two protocol handlers stay separate                                                                                                                                                           | The relay (M5) would be that second user                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 14  | Market page: "AI: built-in assistant, or only external assistants through MCP" is an open decision (`docs/market/README.md`) | **Assumes "external assistants through MCP"**                                                                                                                                                               | Proposed for the maintainer to record; only the maintainer edits that page                                                                                                                                                                                                                                                                                                                                                                 |
-| 15  | Listing the local version as a Claude Desktop extension (raised in the Oct 26 discussion)                                    | **Dropped**                                                                                                                                                                                                 | Deprecated by Anthropic (§3). A Claude Code plugin is possible but is not in this round                                                                                                                                                                                                                                                                                                                                                    |
+| #   | Earlier decision (source)                                                                                                    | This plan                                                                                                                            | Why                                                                                                                                                                                                                                                                                                                                         |
+| --- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | "Editing is out of scope until usage shows a need" (09-22, Decision)                                                         | **Kept.** Rev. 1 proposed reversing it; M3 is deferred                                                                               | The review guide wants new evidence for a reversal, and none was new. The community CRUD servers were already the 09-22 evidence, and Parallel Code already runs this loop over REST. Local servers cannot be listed in any directory (§3), so M3 adds nothing to reach                                                                     |
+| 2   | Reads forward to the existing REST routes; capture uses its own internal route (09-22, §5)                                   | **Kept.** When M3 returns, edits use internal `/assistant/*` routes that call a scheduling service shared with the task context menu | REST `PATCH` sets `dueDay` through a generic `updateTask`. The menu keeps a task's time when moving it to another day and does nothing when it is already due that day (`task-context-menu-inner.component.ts:800–850`), while `planTaskForDay` clears the time (`task.reducer.ts:738–748`). Only shared code makes "same as the menu" true |
+| 3   | "Only active tasks … the archive is never exposed" (09-22, §Tools; wiki 3.01)                                                | **Kept.** M4 is deferred; as designed it is a partial reversal (archived totals)                                                     | §6.4                                                                                                                                                                                                                                                                                                                                        |
+| 4   | No `instructions` in `initialize` (09-22, §Protocol)                                                                         | **Kept**                                                                                                                             | Tool descriptions carry the domain rules; one less public string                                                                                                                                                                                                                                                                            |
+| 5   | `.mcpb` release asset and in-app download are follow-ups (09-22, §.mcpb, §8)                                                 | **Done now** (M2), packed with `fflate` as before                                                                                    | Claude Desktop users have no other route. Rev. 1's hand-written zip writer was an unlisted reversal of 09-22's "fflate, already a root dependency"; the Linux release job already installs dependencies (`build.yml:107`)                                                                                                                   |
+| 6   | MAS `network.server` entitlement in its own release, after a dev-build check (09-22, §3, §8)                                 | **Unchanged.** The in-app `.mcpb` link shows only on Windows and on the macOS direct download                                        | A Mac App Store build cannot listen yet, and Claude Desktop has no Linux build                                                                                                                                                                                                                                                              |
+| 7   | Hosted path only for capture (10-11, Decision 1)                                                                             | **Kept**                                                                                                                             | —                                                                                                                                                                                                                                                                                                                                           |
+| 8   | "Out of scope: reading tasks remotely, editing …, server-created ops" (10-11)                                                | **Kept.** M5 designs remote read and edit as a relay that runs on the user's device and is **gated**                                 | The relay is the only remote design that keeps the pitch true; its cost (§6.5) needs uptake evidence first                                                                                                                                                                                                                                  |
+| 9   | The headless client "stays deferred" as the path to remote read (10-11, Decision)                                            | **Rejected** for directory use                                                                                                       | It needs the user's key and full plaintext state on the server, plus reducer extraction (~240 files)                                                                                                                                                                                                                                        |
+| 10  | `create_task` annotations `readOnlyHint: false, destructiveHint: false` (10-11, §Tool contract)                              | Add `title`, `idempotentHint: false` and `openWorldHint: false` (M1). `destructiveHint` stays false (§6.1)                           | Claude needs `title`; ChatGPT needs all three hints explicitly                                                                                                                                                                                                                                                                              |
+| 11  | M4: wiki per client, privacy-policy addition, release notes, enable on the hosted server (10-11, Milestones)                 | The privacy-policy section is written here. Redeploying stays an operator step                                                       | Both directories need a privacy-policy URL. The hosted instance already runs with `CAPTURE_CONNECTOR_ENABLED`, so the section goes live on the next deploy: legal review comes first                                                                                                                                                        |
+| 12  | Connect code and client allowlist instead of server sign-in (10-11, Decision 5)                                              | **Kept, plus** an operator-set reviewer code bound to one demo account (M2b)                                                         | Directory reviewers test days later from vendor infrastructure, so a 10-minute code from a running app cannot work. Server sign-in would still need the login-then-continue flow the 10-11 plan avoided                                                                                                                                     |
+| 13  | "No shared package until a second user exists" (10-11, §/mcp)                                                                | **Kept**                                                                                                                             | The relay (M5) would be that second user                                                                                                                                                                                                                                                                                                    |
+| 14  | Market page: "AI: built-in assistant, or only external assistants through MCP" is an open decision (`docs/market/README.md`) | **Assumes "external assistants through MCP"**                                                                                        | Proposed for the maintainer to record; only the maintainer edits that page                                                                                                                                                                                                                                                                  |
+| 15  | Listing the local version as a Claude Desktop extension (raised in the Oct 26 discussion)                                    | **Dropped**                                                                                                                          | Deprecated by Anthropic (§3). A Claude Code plugin is possible but is not in this round                                                                                                                                                                                                                                                     |
 
 ## 6. Design
 
@@ -229,27 +243,28 @@ Every tool gets a top-level `title` (protocol 2025-06-18 and later) and
 `annotations` with `title` (2025-03-26 clients read only this), plus all four
 hints as explicit booleans:
 
-| Tool                          | title                       | readOnly | destructive | idempotent | openWorld |
-| ----------------------------- | --------------------------- | -------- | ----------- | ---------- | --------- |
-| `get_status`                  | Check connection            | true     | false       | true       | false     |
-| `list_tasks`                  | List tasks                  | true     | false       | true       | false     |
-| `get_task`                    | Get task                    | true     | false       | true       | false     |
-| `list_projects`               | List projects               | true     | false       | true       | false     |
-| `list_tags`                   | List tags                   | true     | false       | true       | false     |
-| `get_time_summary` (M4)       | Summarize tracked time      | true     | false       | true       | false     |
-| `create_task` (local, hosted) | Add task to Inbox           | false    | false       | false      | false     |
-| `log_time` (M3)               | Log time on task            | false    | false       | false      | false     |
-| `start_tracking` (M3)         | Start time tracking         | false    | false       | true       | false     |
-| `stop_tracking` (M3)          | Stop time tracking          | false    | false       | true       | false     |
-| `complete_task` (M3)          | Mark task done or not done  | false    | true        | true       | false     |
-| `schedule_task` (M3)          | Schedule or unschedule task | false    | true        | true       | false     |
-| `update_task` (M3)            | Update task                 | false    | true        | true       | false     |
+| Tool                          | title             | readOnly | destructive | idempotent | openWorld |
+| ----------------------------- | ----------------- | -------- | ----------- | ---------- | --------- |
+| `get_status`                  | Check connection  | true     | false       | true       | false     |
+| `list_tasks`                  | List tasks        | true     | false       | true       | false     |
+| `get_task`                    | Get task          | true     | false       | true       | false     |
+| `list_projects`               | List projects     | true     | false       | true       | false     |
+| `list_tags`                   | List tags         | true     | false       | true       | false     |
+| `create_task` (local, hosted) | Add task to Inbox | false    | false       | false      | false     |
 
-- **Additive writes are not destructive.** That matches the MCP definition
-  ("only additive updates") and ChatGPT's rule. Tools that overwrite existing
-  values are destructive, so Claude always asks before running them.
-- **`openWorldHint` is false** everywhere: the tools touch only the user's own
-  workspace.
+- **`destructiveHint: false` on `create_task` is a deliberate choice.** It adds
+  and never overwrites. That matches the MCP definition ("only additive
+  updates") and ChatGPT's rule. Claude's wording is "true for tools that modify
+  or delete data", and creating a task changes no existing data. If Claude's
+  review disagrees, flipping it is a one-line change on both servers.
+- **`openWorldHint: false`.**
+  - The tools act on the user's own task list, like a memory tool rather than a
+    web search.
+  - An issue integration the user configured to auto-create issues for Inbox
+    tasks still acts on a captured task, as it would on one added by hand (wiki
+    3.01 already says so).
+  - Edit tools would be different, because two-way issue sync pushes edits to
+    linked issues (§6.3).
 
 `serverInfo` gains `title: "Super Productivity"` and `websiteUrl` (2025-11-25
 `Implementation`). No icons: the directories take their icon from the
@@ -258,118 +273,95 @@ submission form.
 ### 6.2 Distribution (M2)
 
 - **`.mcpb`.**
-  - `tools/mcpb/pack.js` becomes dependency-free, writing a stored zip with
-    Node's `zlib` and CRC32. It then runs with a bare Node in the release job.
-  - It stamps the manifest `version` with the app version, adds the app icon
-    (`icon.png`, 512 px) and prints the SHA-256.
-  - The `create-release` job uploads `super-productivity.mcpb` to the draft
-    release.
-- **In-app.** Under "Connect an assistant", one line links to the latest
-  release asset: "Claude Desktop: install the extension". It links to
-  `releases/latest/download/super-productivity.mcpb`, which redirects to the
-  newest published release.
-- **MCP Registry.**
-  - Two entries, because the two servers have different tools, auth and
-    reach:
-    - `io.github.super-productivity/super-productivity` is the `.mcpb`
-      package (local, full permissions model).
-    - `io.github.super-productivity/supersync-capture` is the hosted
-      `remotes` URL.
-  - A `workflow_dispatch` workflow publishes both with GitHub Actions OIDC. It
-    downloads a pinned `mcp-publisher`, verifies its checksum, then fills in the
-    version and SHA-256 from the release.
-  - Docker's catalog, Smithery and Glama follow by hand once the registry
-    entries exist.
-- **Privacy policy.** A new section in the SuperSync privacy template covers
-  AI assistant connections:
-  - what the assistant sends and what the server sees in memory
-  - sealed storage, and deletion after import or 45 days
-  - the grant metadata kept: client name, created, last used, expiry
-  - revocation, and that the assistant's provider processes the data under its
-    own terms
+  - `tools/mcpb/pack.js` keeps `fflate`. It stamps the manifest `version` with
+    the app version, adds the app icon (`build/icons/512x512.png` as
+    `icon.png`), and prints the SHA-256 for registry use.
+  - The `linux-bin-and-snap-release` job, which already runs `npm i`, packs it
+    on tag builds and uploads it to the draft release with
+    `gh release upload --clobber`.
+- **In-app link.** Under "Connect an assistant": "Claude Desktop: install the
+  extension".
+  - It points to `releases/latest/download/super-productivity.mcpb`, which
+    resolves to the newest published release; drafts and pre-releases are
+    skipped.
+  - It shows only for the Windows channels and `mac-dmg`
+    (`window.ea.getDistChannel()`). Claude Desktop has no Linux build, and a
+    Mac App Store build cannot listen yet.
+- **MCP Registry.** One entry, `io.github.super-productivity/supersync`, for the
+  hosted endpoint.
+  - It declares the `Authorization: Bearer {token}` header as required and
+    secret, because VS Code and Cursor read registry entries but are not on the
+    OAuth allowlist.
+  - The `.mcpb` gets no registry entry: registry consumers rarely install
+    bundles, and each release would need a new immutable version.
+  - A `workflow_dispatch` workflow publishes it with GitHub Actions OIDC. It
+    uses `mcp-publisher` v1.8.1, pinned by SHA-256.
+  - Docker's catalog, Smithery and Glama follow by hand.
+- **Privacy policy.** An optional section in the SuperSync privacy template,
+  rendered only when `CAPTURE_CONNECTOR_ENABLED` is on, covers:
+  - what the assistant sends, and what the server sees only in memory
+  - sealed storage, and deletion after import or after `RETENTION_DAYS`
+    (rendered from the constant)
+  - the grant metadata kept, and aggregate counting of connections per
+    assistant to decide on the feature's development
+  - revocation, and that the assistant's provider processes data under its own
+    terms
 
-  It goes to the maintainer for legal review before the hosted server serves it.
+  **Legal review before deploy:** the hosted instance serves it on its next
+  deploy.
 
-### 6.3 Local planning tools (M3)
+### 6.3 Local planning tools (M3, deferred)
 
-**New scope.** `tasks:edit` ("Change tasks: complete, schedule, rename,
-estimate, move between projects and tags, and track or log time").
+This waits for the demand signal in §1. When it returns, the review's findings
+are requirements:
 
-- `normalizeScopes` drops it without `tasks:read`, as it does for
-  `tasks:read_notes`: an assistant cannot edit sensibly without ids from a read.
-- Writing `notes` additionally needs `tasks:read_notes`. An assistant that
-  cannot see notes must not overwrite them blindly.
+1. **Outside effects.** Edits reach outside services:
+   - two-way issue sync pushes `isDone`, `title`, `notes`, `dueDay`,
+     `dueWithTime`, `timeEstimate` and `tagIds` on `updateTask`,
+     `scheduleTaskWithTime`, `planTaskForDay` and `unscheduleTask`
+     (`issue-two-way-sync.effects.ts:70–78, 207–216`)
+   - completing a Jira task runs transitions (`jira-issue.effects.ts`)
+   - a timed schedule writes calendar time-blocks
+   - a move into a Plainspace project creates a remote issue
 
-**Tools.** Main validates arguments strictly, as for capture. The renderer
-validates again.
+   So either reject edits on issue-linked or time-blocked tasks, or declare
+   `openWorldHint: true` behind a separate scope. Otherwise a steered assistant
+   can copy private notes into a public issue.
 
-- `complete_task {id, isDone? = true}`. Uses `TaskService.setDone` or
-  `setUnDone`, like the checkbox. An unchanged state is a no-op success.
-- `schedule_task {id, dueDate, dueTime?}`, or `{id, dueDate: null}` to clear.
-  It follows the context menu exactly:
-  - with a time: `scheduleTaskWithTime` and the default reminder option
-  - today: `planTasksForToday`
-  - another day: `PlannerActions.planTaskForDay`
-  - `null`: `unscheduleTask`
+2. **Same code as the menu.** Extract the context menu's schedule branching into
+   a shared service and call it from both. Claim "the same ops as the UI path",
+   not "one op": effects add ops (`onAllSubTasksDone$`,
+   `planStartedTaskForToday$`, `autoAddTodayTagOnTracking`). Test with real
+   effects, not a mocked store.
+3. **No notes writes.** `get_task` cuts notes at 8 KB, so a read-modify-write
+   loses the rest, and `notes: ""` is a delete in disguise.
+4. **Async outcome discipline.** Load everything first. Re-check
+   `isApplyingRemoteOps()` right before each dispatch, and treat a main-side
+   timeout as `OUTCOME_UNKNOWN`. A `log_time` error tells the assistant to check
+   `get_task` before retrying, because a retry double-counts time.
+5. **Overdue filter.** Serve it from the internal route with
+   `selectUndoneOverdue`, not REST: the REST handler is at 1193 of its
+   1200-line cap. `get_status` returns the logical `today`, so "tomorrow" means
+   the same as in the app.
+6. **`start_tracking`.** Reject parents, done tasks, and starts while tracking
+   is off, exactly where the play button is hidden
+   (`task-hover-controls.component.html:1`).
+7. **Project moves and estimates.** Reject a project move for a recurring task
+   with more than one instance; a move skips the menu's confirm dialog. Reject
+   `timeEstimate` on a parent, which subtasks recompute.
+8. **Limits.** A local daily write cap, like the hosted 200 a day. No undo
+   exists for edits, so say so.
 
-  A day in the past is rejected.
+### 6.4 Time summary (M4, deferred)
 
-- `update_task {id, title?, notes?, timeEstimate?, projectId?, tagIds?}`. At
-  least one field is required.
-  - Title, notes and estimate go into one `updateTask`, with
-    `isIgnoreShortSyntax: true`.
-  - `projectId` uses the same move as REST (`moveTaskToProject`, which carries
-    repeat configs, #10675); subtasks are rejected.
-  - `tagIds` uses `TaskService.updateTags`; subtasks are rejected, and unknown
-    tag ids are rejected.
-  - The Today tag id is rejected; Today is a due date (`schedule_task`).
-- `start_tracking {id}` and `stop_tracking {}` use `setCurrentId`, like the
-  play button.
-  - A parent resolves to its first open subtask (`task.reducer.ts:290`). The
-    result names the task actually tracked.
-  - A done task is rejected (`TASK_DONE`), although the app would reopen it
-    (`reopenStartedDoneTask$`). Without the reopen, the tool only moves the
-    tracking pointer, plus the user's own "add worked-on tasks to Today"
-    setting, which only schedules unscheduled tasks. That keeps it additive
-    (`destructiveHint: false`).
-- `log_time {id, date, minutes}` uses the REST time path (`addTimeSpentOnDay`):
-  the date must be today or earlier, at most 24 h per day, and a parent task is
-  rejected.
+When it returns:
 
-**Outcome discipline** is the capture service's:
-
-1. `APP_BUSY` while remote ops apply.
-2. `PERSIST_DEGRADED` if persistence already failed.
-3. Dispatch, then flush.
-4. `OUTCOME_UNKNOWN` if the flush throws or the persist flag flips.
-
-An edit that ran is reported even if the grant was revoked meanwhile, as
-capture does. The result echoes the task summary, never notes.
-
-**Routing.** Internal routes `/assistant/tasks/:id/{complete,schedule,update,
-track,time}` and `/assistant/tracking/stop`. They are accepted only with
-`source: 'mcp'`, which an HTTP client cannot set. The new code lives in
-`src/app/features/tasks/assistant-capture/`: a new `AssistantTaskEditService`
-and its routes service. Nothing is added to `task.service.ts` or the REST
-handler.
-
-**List filter.** `list_tasks` gains `due: "overdue"`: open tasks whose
-`dueDay`, or the day of `dueWithTime`, is before the logical today. It is
-served by a new optional REST query `?due=overdue` (additive, documented),
-because only the renderer knows the logical day.
-
-### 6.4 Time summary (M4)
-
-`get_time_summary {startDate, endDate}` covers at most 31 days and needs scope
-`tasks:read`. It answers through an internal renderer route that reads
-`timeSpentOnDay` of active and archived tasks and returns:
-
-- `days: [{date, totalMs, byProject: [{projectId, ms}]}]`
-- `tasks: [{id, title, projectId, ms}]`: active tasks only, the top 50 by time
-  in range
-- `untitledMs`: time on archived tasks, which are counted but not named
-
-The response cap and projection stay in main, as for the other tools.
+- It reuses the worklog mapping (`map-archive-to-worklog.ts`). Summing
+  `timeSpentOnDay` double-counts, because a parent's value is the sum of its
+  subtasks.
+- It leaves out tasks of archived projects.
+- It records the partial reversal of "archive never exposed" in wiki 3.01:
+  totals only, no archived titles.
 
 ### 6.5 Remote planning through the user's device (M5, gated, not built now)
 
@@ -383,118 +375,128 @@ The response cap and projection stay in main, as for the other tools.
   - It returns the result and stores nothing.
 - **Device.** Desktop only in v1. The renderer receives the message and passes
   it over IPC to main's existing `runTool`. The scopes applied are the
-  intersection of the grant's scopes and this device's Assistant access scopes,
-  so the user opts in per device and per assistant.
+  intersection of the grant's scopes and this device's Assistant access scopes.
 - **Offline.** `create_task` keeps the sealed queue. Other tools answer
   "Super Productivity is not running on a computer with assistant access on."
 - **Privacy text.** "Your tasks stay on your devices. When your assistant asks,
   your own computer answers; the sync server passes the answer through without
-  storing it. The assistant's provider sees what it reads." Storage stays E2EE.
-  The server sees content in memory while relaying, exactly as it does for
-  capture today.
-- **Directory review** needs an always-on demo device: the desktop app on a
-  small VM signed in to a demo SuperSync account.
+  storing it. The assistant's provider sees what it reads."
+- **Directory review** needs an always-on demo device, plus the M2b reviewer
+  code.
 - **Gate (all three):**
-  1. The hosted capture grants show sustained use (the maintainer sets the
-     number).
-  2. The M3/M4 tools pass §6.7 locally.
+  1. Sustained hosted use, measured as grants used in the last 30 days (the
+     maintainer sets the number).
+  2. M3 back with the §6.3 requirements met.
   3. The capture connector holds a Claude Community listing.
 - **Estimate:** 4–6 focused weeks, including E2E on SuperSync and a
   fresh-context review.
 - **Rejected alternatives:**
-  - Headless server client (§5, row 9).
+  - The headless client (§5, row 9).
   - A zero-knowledge tunnel that terminates TLS on the device. It needs
     per-user hostnames and certificates, and the assistant's vendor sees the
     plaintext anyway.
 
-### 6.6 Directory submissions (M6, maintainer)
+### 6.6 Reviewer access (M2b) and submissions (M6, maintainer)
 
-- **Claude, hosted capture connector, after M1 is deployed and the privacy
-  section is live:**
-  - Portal submission with docs (wiki 3.01 § Agent Task Capture), privacy URL,
-    support (GitHub issues) and icon.
+**Reviewer code.**
+
+- The operator sets `CAPTURE_REVIEW_EMAIL` and `CAPTURE_REVIEW_CODE`: 20 to 32
+  characters, both or neither.
+- On the consent page that code approves an authorization for that one
+  verified account, if it has capture switched on. The usual checks run: user
+  lock and token version.
+- Unlike a connect code it is reusable, so each reviewer session gets its own
+  grant.
+- **Limits:**
+  - It is rate-limited like the connect code (10 approves per minute per IP).
+  - It grants only capture: write-only, at most 200 tasks a day.
+  - It reaches only the demo account.
+  - Unsetting the variables ends it, and revoking in the demo account's app
+    removes the grants.
+- It is logged without the code.
+
+**Submissions:**
+
+- **Claude:** submit the hosted connector through the portal, after the
+  redeploy and the privacy section's legal review.
+  - Docs: wiki 3.01 § Agent Task Capture. Support: GitHub issues. Plus an icon.
+  - Test credentials: the reviewer code, plus the demo account's connect steps.
   - Three example prompts: "Add 'renew passport' to my Super Productivity
     Inbox for next Monday", "Remind me every weekday at 9:00 to review my
     plan", and "Save these three action items from this email as tasks".
-  - The reviewer runbook: a demo SuperSync account, plus a running app that
-    shows the connect code.
-- **ChatGPT.** The same connector, after identity verification and the domain
-  token. It needs 5 positive and 3 negative cases, a demo video (`e2e/store-video`
-  tooling) and a global-residency project.
-- **Both listings are capture-only until M5.** The listing text says so ("adds
-  tasks; it can't read them").
+- **ChatGPT:** the same connector, after identity verification and the domain
+  token.
+  - 5 positive and 3 negative cases.
+  - A demo video (`e2e/store-video` tooling).
+  - A global-residency project.
+- **The listing text says "adds tasks; it can't read them"** until M5.
 
 ### 6.7 Scenarios (the quality bar)
 
-Run by hand per release against a fixture profile. Each scenario passes only
-when it works first try with no follow-up prompt.
+Run by hand per release, by the maintainer, for the tools that exist. Each
+scenario passes only when it works with one prompt and no correction. Claude's
+permission prompts do not count as corrections.
 
-1. "What's on my plate today, and is it realistic for 6 hours?" (read +
-   estimates)
-2. "Move everything overdue to tomorrow." (`list_tasks due:overdue` +
-   `schedule_task`)
-3. "Add 'call Anna' for tomorrow at 15:00." (`create_task`)
-4. "Mark the dentist task done." (`list_tasks query` + `complete_task`)
-5. "Put the three inbox tasks about the website into project Website." (`update_task
-projectId`)
-6. "I spent 45 minutes on the report yesterday; log it." (`log_time`)
-7. "Start tracking the invoice task." / "Stop." (`start_tracking` /
-   `stop_tracking`)
-8. "How did I spend my time last week, by project?" (`get_time_summary`)
-9. Negative: "Delete all my tasks." The assistant has no tool for it and must
-   say so.
-10. Negative: with only `tasks:read`, "Mark X done". The tool is not listed, and
-    the assistant explains that permission is missing.
+1. "Add 'call Anna' for tomorrow at 15:00." (`create_task`)
+2. "Remind me every weekday at 9:00 to review my plan." (`create_task repeat`)
+3. "Save these three action items from this email as tasks." (three
+   `create_task` calls)
+4. Local: "What's on my plate today, and is it realistic for 6 hours?"
+   (`list_tasks tagId:TODAY` + estimates)
+5. Local, with only capture granted: "What's on my list?" The read tools are
+   not listed, and the assistant says it lacks permission.
+6. Negative: "Delete all my tasks." There is no tool for it.
+
+The M3 and M4 scenarios (overdue moves, completing, logging time, weekly
+summary) return with those milestones.
 
 ## 7. Milestones
 
-| #   | Deliverable                                                                                                                                                   | Verify                                                                                                                                                                                                                                                                                                                    | In this round |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| M1  | Annotations and titles on all local and hosted tools; `serverInfo.title` and `websiteUrl`                                                                     | Electron tests (`npm run test:electron`) and server tests assert annotations on every listed tool; the bridge end-to-end test still passes                                                                                                                                                                                | Yes           |
-| M2  | Dependency-free `pack.js` with icon, version and SHA-256; release-job upload; in-app link; registry `server.json` files and publish workflow; privacy section | The packed file passes `unzip -t` and `mcpb validate` (run from a temp directory, no repo dependency); registry JSON validates against the published schema; the privacy-page test (`legal-pages.spec.ts`) still passes                                                                                                   | Yes           |
-| M3  | `tasks:edit` scope, settings checkbox, six edit tools, internal routes, edit service, `due: overdue` filter, wiki 3.01 and 3.02                               | Electron tests for scope normalization, tool listing, validation, routing and revocation; renderer specs: one op per call (except `update_task` combining a move with field changes), the exact actions dispatched, the outcome codes; `npm run test:affected`; `checkFile`; assistant smoke script extended with an edit | Yes           |
-| M4  | `get_time_summary` route and tool                                                                                                                             | Renderer spec with active and archived fixtures (no archived title leaks); electron tool tests for caps                                                                                                                                                                                                                   | Yes           |
-| M5  | Relay                                                                                                                                                         | Gated (§6.5)                                                                                                                                                                                                                                                                                                              | No            |
-| M6  | Submissions                                                                                                                                                   | Maintainer                                                                                                                                                                                                                                                                                                                | No            |
-
-PR split: M1+M2 together (no app-state change), M3, then M4.
+| #   | Deliverable                                                                                                                     | Verify                                                                                                                                                                                                                                | Estimate  | Status        |
+| --- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------- |
+| M1  | Annotations and titles on all local and hosted tools; `serverInfo.title` and `websiteUrl`                                       | `npm run test:electron` asserts a title and four boolean hints on every tool; server specs check the hosted tool and `serverInfo`                                                                                                     | 0.5 day   | Done (branch) |
+| M2  | Privacy section; `.mcpb` with icon and version, uploaded on tag builds; in-app link; hosted registry entry and publish workflow | `legal-pages.spec.ts` with the connector on and off; the packed file passes `unzip -t` and the MCPB CLI's `validate` (run from a temp directory); `server.json` validates against its schema; component spec for the link's platforms | 1–2 days  | Done (branch) |
+| M2b | Reviewer code                                                                                                                   | pglite specs: approve with the code binds only the demo account, is reusable, refuses a wrong code or a demo account with capture off, and is ignored when unset; config rejects partial or short values                              | 1 day     | Done (branch) |
+| M3  | Local planning tools                                                                                                            | §6.3                                                                                                                                                                                                                                  | 2–3 weeks | Deferred      |
+| M4  | Time summary                                                                                                                    | §6.4                                                                                                                                                                                                                                  | 1 week    | Deferred      |
+| M5  | Relay                                                                                                                           | §6.5                                                                                                                                                                                                                                  | 4–6 weeks | Gated         |
+| M6  | Submissions                                                                                                                     | Maintainer                                                                                                                                                                                                                            | days      | Next          |
 
 ## 8. Long-term cost
 
-- **Sync.** No synced field, no new action, no meta-reducer, no schema bump.
-  Each edit tool dispatches the action its menu item dispatches. Remote ops
-  never trigger these routes.
-- **Device-local state.** The new scope string sits in main's simple store,
-  which is not part of `MODEL_CONFIGS`, not synced and not in backups. An older
-  app drops the unknown scope on load (`normalizeScopes`), so a downgrade fails
-  closed.
-- **Public contracts.** Tool names, arguments, annotations and result shapes
-  can be added to, but not renamed or removed. The REST query `due=overdue` is
-  additive. Registry versions are immutable.
-- **Blast radius.** An assistant steered by a web page can now change tasks on
-  this computer, once the user grants `tasks:edit`. Limits:
-  - no delete, archive or bulk tools
-  - writing notes needs notes read access
-  - destructive tools prompt in Claude
-  - every change is an ordinary op the user can see and revert in the app
-- **Maintenance.**
-  - Annotations are re-checked when a tool changes.
-  - Directory rules are re-checked yearly (both changed in 2026).
-  - The `.mcpb` follows the MCPB manifest version.
-  - Until M5, tool logic lives only in the Electron main process.
+- **Sync.** None: no synced field, action, op or schema change.
+- **Public contracts.**
+  - Tool titles and annotations become part of the tool listing.
+  - The registry name `io.github.super-productivity/supersync` and its
+    published versions are permanent.
+  - The `.mcpb` asset name `super-productivity.mcpb` is linked from the app and
+    must stay.
+- **Hosted auth surface.** The reviewer code adds a second way to approve an
+  authorization. It is limited to one operator-named account, off unless both
+  variables are set, and covered by the existing rate limits.
+- **Recurring work.**
+  - The §6.7 scenarios, by hand per release.
+  - The demo account, and its device for M5.
+  - Re-checking directory rules yearly; both changed in 2026.
+  - Bumping the pinned `mcp-publisher`.
+  - Legal review when the privacy section changes.
 
 ## 9. Decisions for the maintainer
 
-1. Accept the partial reversal of "no editing" (§5, row 1) for the local
-   endpoint, behind `tasks:edit`, which is off by default.
-2. Set the M5 gate: the number of active capture grants, and the review date.
-3. Record "external assistants through MCP, no built-in assistant" on the
+1. Legal review of the privacy section, then redeploy the hosted server.
+   Confirm its tool list shows `dueDate`, `dueTime` and `repeat`.
+2. Create the demo account, set `CAPTURE_REVIEW_EMAIL` and
+   `CAPTURE_REVIEW_CODE` on the hosted server, and submit to Claude's
+   directory.
+3. Run the registry workflow once the hosted server is redeployed.
+4. ChatGPT: verify as an individual or a business, create a project with global
+   data residency, and add the domain token.
+5. Record "external assistants through MCP, no built-in assistant" on the
    market page.
-4. Submit the capture connector to Claude's directory now (recommended) or wait
-   for M5.
-5. ChatGPT: verify as an individual or a business; create a project with
-   global data residency.
-6. Legal review of the privacy section before the hosted server serves it.
+6. Set the M5 gate (number of grants used in 30 days, review date) and the M3
+   demand bar.
+7. Ship the MAS entitlement release (09-22, §3) if macOS App Store users should
+   get the local endpoint.
 
 ## 10. Out of scope
 
@@ -505,17 +507,61 @@ PR split: M1+M2 together (no app-state change), M3, then M4.
 - Telemetry.
 - Server-created ops.
 - A headless server client.
-- Relay devices other than desktop (in M5).
 - A Claude Code plugin.
+- A `.mcpb` registry entry.
 - The 2026-07-28 protocol revision (unchanged from 09-22).
+
+## Review
+
+A fresh-context adversarial review of rev. 1 (Oct 26) checked it against the
+code, the earlier plans and the review guide. Fixed in rev. 2:
+
+- **B1 — edits reach outside services, so `openWorldHint: false` would be wrong
+  for them.** It became M3 requirement 1. §6.1 keeps `false` for the shipped
+  tools and says why.
+- **B2 — M3 and M4 do not earn their place yet.** Both are deferred, and §1
+  names a local demand signal.
+- **B3 — "follows the context menu" and "one op" were false.** These became
+  requirement 2.
+- **B4 — notes writes lose data past 8 KB.** Requirement 3: no notes writes.
+- **S1 — async outcome discipline.** Requirement 4.
+- **S2 — M4 would partly reverse the archive promise and double-count.** §6.4.
+- **S3 — the zip writer was an unlisted reversal.** `fflate` is kept, in the job
+  that already installs dependencies.
+- **S4 — REST cap and logical today.** Requirement 5.
+- **S5 — `destructiveHint` against Claude's wording.** Recorded as a deliberate
+  choice in §6.1.
+- **S6 — `start_tracking` behavior.** Requirement 6.
+- **S7 — reviewers cannot sign in; registry clients cannot use OAuth.** M2b adds
+  the reviewer code, and the registry entry declares the bearer header.
+- **S8 — the uptake signal is a new purpose.** The privacy section discloses
+  aggregate counting, and the gate uses `lastUsedAt`.
+- **S9 — §8 overstated the limits on damage.** It now covers only what ships;
+  requirement 8 holds the rest.
+- **Nits, all fixed:**
+  - parent estimates
+  - the `.mcpb` link on MAS and Linux
+  - the `.mcpb` registry entry (dropped)
+  - `id-token: write`
+  - estimates
+  - the ClickUp claim
+  - the hard-coded 45 days (now rendered from `RETENTION_DAYS`)
+
+Not fixed:
+
+- **"Rejecting tags on subtasks differs from the menu."** This is moot while M3
+  is deferred.
 
 ## Sources
 
-- Repository: `electron/mcp/*`, `electron/shared-with-frontend/assistant-access.model.ts`,
+- Repository: `electron/mcp/*`, `electron/shared-with-frontend/{assistant-access.model,get-dist-channel}.ts`,
   `src/app/features/tasks/assistant-capture/*`,
   `src/app/core/electron/local-rest-api-handler.service.ts`,
   `src/app/features/tasks/task-context-menu/task-context-menu-inner/task-context-menu-inner.component.ts`,
-  `packages/super-sync-server/src/capture/*`, `packages/super-sync-server/templates/privacy.template.html`,
+  `src/app/features/issue/two-way-sync/issue-two-way-sync.effects.ts`,
+  `src/app/features/tasks/store/{task.reducer,task-internal.effects}.ts`,
+  `packages/super-sync-server/src/capture/*`, `packages/super-sync-server/src/server.ts`,
+  `packages/super-sync-server/templates/privacy.template.html`,
   `tools/mcpb/*`, `.github/workflows/build.yml`, `docs/market/{README,scorecard}.md`.
 - [Claude connector submission](https://claude.com/docs/connectors/building/submission.md),
   [review criteria](https://claude.com/docs/connectors/building/review-criteria.md),
@@ -526,8 +572,10 @@ PR split: M1+M2 together (no app-state change), M3, then M4.
 - [ChatGPT app/plugin submission](https://help.openai.com/en/articles/20001040-submitting-apps-to-the-chatgpt-app-directory),
   [app review](https://developers.openai.com/plugins/deploy/app-review),
   [plugin guidelines](https://developers.openai.com/plugins/plugin-guidelines) (snippet).
-- [MCP Registry](https://github.com/modelcontextprotocol/registry) docs:
-  `authentication.mdx`, `remote-servers.mdx`, `package-types.mdx`.
+- [MCP Registry](https://github.com/modelcontextprotocol/registry) docs
+  (`authentication.mdx`, `remote-servers.mdx`, `package-types.mdx`,
+  `github-actions.mdx`) and the
+  [2025-12-11 server.json schema](https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json).
 - [MCP tool annotations](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)
   (spec source on GitHub).
 - [Parallel Code](https://github.com/johannesjo/parallel-code) README.
