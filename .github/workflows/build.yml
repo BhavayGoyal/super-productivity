@@ -150,6 +150,18 @@ jobs:
           github_token: ${{ secrets.github_token }}
           release: true
 
+      # The Claude Desktop extension (tools/mcpb), linked from the app's
+      # assistant access settings by its asset name. Packed here because this
+      # job has the dependencies installed; it joins the same draft release.
+      - name: Attach Claude Desktop extension to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node tools/mcpb/pack.js
+          gh release upload "$GITHUB_REF_NAME" dist/super-productivity.mcpb \
+            --repo "$GITHUB_REPOSITORY" --clobber
+
       - name: Build Electron app
         if: false == startsWith(github.ref, 'refs/tags/v')
         uses: johannesjo/action-electron-builder@9ea9e2d991c97668843d57337848e3e2b1ffab3d # v1

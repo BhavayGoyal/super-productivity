@@ -2877,6 +2877,7 @@
       "ASSISTANT_ACCESS_KEY_EXISTS": "An access key is set. Replacing it disconnects assistants that use the old one.",
       "ASSISTANT_ACCESS_SETUP": "Connect an assistant",
       "ASSISTANT_ACCESS_SETUP_CLAUDE_CODE": "Claude Code: run this command",
+      "ASSISTANT_ACCESS_SETUP_CLAUDE_DESKTOP": "Claude Desktop: download the extension, open it and paste the access key when asked",
       "ASSISTANT_ACCESS_SETUP_JSON": "Other MCP clients that support HTTP servers:",
       "ASSISTANT_ACCESS_SAVE_ERROR": "Could not save the assistant access setting.",
       "IS_MINIMIZE_TO_TRAY": "Minimize to tray (desktop only)",
