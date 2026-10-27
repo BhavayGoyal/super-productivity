@@ -591,4 +591,42 @@ describe('getSimpleCounterStreakDuration()', () => {
       expect(getSimpleCounterStreakDuration(counter as SimpleCounterCopy)).toBe(0);
     });
   });
+
+  describe('start of next day offset', () => {
+    const FOUR_HOURS = 4 * 60 * 60 * 1000;
+    const ALL_DAYS = { 0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true };
+    const day = (d: number): string => getDbDateStr(new Date(2026, 9, d));
+
+    beforeEach(() => {
+      jasmine.clock().install();
+      // 01:30 on Oct 28 belongs to the logical day Oct 27 when the next day starts at 04:00
+      jasmine.clock().mockDate(new Date(2026, 9, 28, 1, 30, 0));
+    });
+
+    afterEach(() => jasmine.clock().uninstall());
+
+    const counter = (countOnDay: Record<string, number>): SimpleCounterCopy =>
+      ({
+        id: '1',
+        countOnDay,
+        isTrackStreaks: true,
+        streakMinValue: 1,
+        streakWeekDays: ALL_DAYS,
+      }) as Partial<SimpleCounterCopy> as SimpleCounterCopy;
+
+    it('should not break the streak before the first tick of the logical day', () => {
+      const sc = counter({ [day(26)]: 1, [day(25)]: 1 });
+      expect(getSimpleCounterStreakDuration(sc, FOUR_HOURS)).toBe(2);
+    });
+
+    it('should count a tick made after midnight on the logical day', () => {
+      const sc = counter({ [day(27)]: 1, [day(26)]: 1 });
+      expect(getSimpleCounterStreakDuration(sc, FOUR_HOURS)).toBe(2);
+    });
+
+    it('should keep using the calendar day without an offset', () => {
+      const sc = counter({ [day(26)]: 1, [day(25)]: 1 });
+      expect(getSimpleCounterStreakDuration(sc)).toBe(0);
+    });
+  });
 });

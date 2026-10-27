@@ -166,7 +166,10 @@ export class DailySummaryComponent implements OnInit, OnDestroy, AfterViewInit {
   simpleCounterSummaryItems: Signal<SimpleCounterSummaryItem[]> = computed(() => {
     return this._enabledSimpleCounters().map((sc) => ({
       ...sc,
-      streakDuration: getSimpleCounterStreakDuration(sc),
+      streakDuration: getSimpleCounterStreakDuration(
+        sc,
+        this._dateService.getStartOfNextDayDiffMs(),
+      ),
     }));
   });
 
