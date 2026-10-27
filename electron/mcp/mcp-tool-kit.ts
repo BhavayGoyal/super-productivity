@@ -3,9 +3,12 @@ import { AssistantAccessScope } from '../shared-with-frontend/assistant-access.m
 import { McpToolDefinition, McpToolResult } from './mcp-protocol';
 
 /**
- * A tool's title and behaviour hints. Every tool here touches only the user's
- * own data, so none is open-world. A write is destructive when it can
- * overwrite something; one that only adds (a task, tracked time) is not.
+ * A tool's title and behaviour hints. Every tool here works on the user's own
+ * task list, so none is open-world; an issue integration the user set up acts
+ * on a captured task as on one added by hand. A tool that edits existing tasks
+ * would not qualify: two-way issue sync pushes those edits to linked issues.
+ * A write is destructive when it can overwrite something; one that only adds
+ * is not.
  */
 export const describeTool = (
   title: string,
