@@ -53,8 +53,6 @@ Some keys have duplicates with an `_NTH` suffix (e.g., `ORD_FIRST` vs `ORD_FIRST
 
 Leave a key out of the locale file until you have a translation for it; it then falls back to English. Do not set it to an empty string (`""`): that renders as blank text in the app, and `npm run int:test` fails on it. Do not copy the English text into the locale file either, unless it is the actual translation.
 
-The above will display the English text for `SOME_KEY`.
-
 ### File Format
 
 - Nested JSON structure
