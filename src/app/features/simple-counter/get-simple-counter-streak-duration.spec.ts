@@ -628,5 +628,24 @@ describe('getSimpleCounterStreakDuration()', () => {
       const sc = counter({ [day(26)]: 1, [day(25)]: 1 });
       expect(getSimpleCounterStreakDuration(sc)).toBe(0);
     });
+
+    it('should key the weekly-frequency streak on the logical day, not the calendar day', () => {
+      // Mon Oct 26 01:30 minus a 4h offset is Sun Oct 25 21:30 (logical day), which
+      // falls in the Mon-Sun week of Oct 19-25, not the calendar week of Oct 26-Nov 1.
+      jasmine.clock().mockDate(new Date(2026, 9, 26, 1, 30, 0));
+      const sc = {
+        id: '1',
+        // 2 ticks in the logical week (Oct 19-25) meet the frequency of 2.
+        // 1 tick in the calendar week (Oct 26-Nov 1) does not.
+        countOnDay: { [day(20)]: 1, [day(21)]: 1, [day(27)]: 1 },
+        isTrackStreaks: true,
+        streakMinValue: 1,
+        streakMode: 'weekly-frequency',
+        streakWeeklyFrequency: 2,
+      } as Partial<SimpleCounterCopy> as SimpleCounterCopy;
+      // If the weekly-frequency path used the calendar day instead of the passed
+      // offset, the calendar week's 1 (unmet) tick would be added on top, giving 3.
+      expect(getSimpleCounterStreakDuration(sc, FOUR_HOURS)).toBe(2);
+    });
   });
 });
