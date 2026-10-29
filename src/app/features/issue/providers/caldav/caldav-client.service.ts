@@ -537,7 +537,9 @@ export class CaldavClientService {
         },
 
         setRequestHeader: (name: string, value: string): void => {
-          headers[name] = value;
+          // Coerce like a real XHR: cdav-library passes numeric Depth values, and
+          // the iOS plugin drops all headers if any value is not a string (#11232).
+          headers[name] = String(value);
         },
 
         send: (body?: string | null): void => {
